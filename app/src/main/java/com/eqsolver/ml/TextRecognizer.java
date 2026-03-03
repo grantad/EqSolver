@@ -1,7 +1,12 @@
 package com.eqsolver.ml;
 
 import android.graphics.Bitmap;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.net.Uri;
+import android.util.Log;
 
 import com.google.android.gms.tasks.Task;
 import com.google.mlkit.vision.common.InputImage;
@@ -17,6 +22,7 @@ import java.io.IOException;
  */
 public class TextRecognizer {
 
+    private static final String TAG = "TextRecognizer";
     private final com.google.mlkit.vision.text.TextRecognizer recognizer;
 
     public TextRecognizer() {
@@ -26,13 +32,55 @@ public class TextRecognizer {
 
     /**
      * Recognizes text from a bitmap image.
+     * Applies preprocessing to improve OCR accuracy.
      *
      * @param bitmap The image containing text to recognize
      * @return Task that will contain the recognized text
      */
     public Task<Text> recognizeText(Bitmap bitmap) {
-        InputImage image = InputImage.fromBitmap(bitmap, 0);
+        // Preprocess the image for better OCR results
+        Bitmap preprocessed = preprocessImage(bitmap);
+
+        InputImage image = InputImage.fromBitmap(preprocessed, 0);
         return recognizer.process(image);
+    }
+
+    /**
+     * Preprocesses the image to improve OCR accuracy.
+     * Increases contrast and sharpness for better text detection.
+     *
+     * @param original The original bitmap
+     * @return Preprocessed bitmap
+     */
+    private Bitmap preprocessImage(Bitmap original) {
+        try {
+            // Create a mutable copy
+            Bitmap processed = original.copy(Bitmap.Config.ARGB_8888, true);
+
+            // Increase contrast using ColorMatrix
+            Canvas canvas = new Canvas(processed);
+            Paint paint = new Paint();
+
+            // Contrast adjustment: values > 1 increase contrast
+            float contrast = 1.5f;
+            float translate = (-.5f * contrast + .5f) * 255.f;
+
+            ColorMatrix colorMatrix = new ColorMatrix(new float[] {
+                contrast, 0, 0, 0, translate,
+                0, contrast, 0, 0, translate,
+                0, 0, contrast, 0, translate,
+                0, 0, 0, 1, 0
+            });
+
+            paint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+            canvas.drawBitmap(processed, 0, 0, paint);
+
+            Log.d(TAG, "Image preprocessing applied (contrast enhancement)");
+            return processed;
+        } catch (Exception e) {
+            Log.e(TAG, "Error preprocessing image, using original", e);
+            return original;
+        }
     }
 
     /**
@@ -57,19 +105,94 @@ public class TextRecognizer {
     public String extractEquation(Text result) {
         String fullText = result.getText();
 
+        Log.d(TAG, "Raw text from ML Kit: '" + fullText + "'");
+
         if (fullText.isEmpty()) {
+            Log.w(TAG, "No text detected in image");
             return "";
         }
 
-        // Clean up the text: remove extra whitespace, newlines
-        String cleaned = fullText.trim()
-                .replaceAll("\\s+", " ")  // Replace multiple spaces with single space
-                .replaceAll("\\n+", " ");  // Replace newlines with space
+        // Try to extract just the equation from all detected text
+        String equation = findEquation(fullText);
 
-        // If the text contains multiple lines, try to identify the equation
-        // For now, we'll return the full cleaned text
-        // Future enhancement: more sophisticated equation detection
-        return cleaned;
+        Log.d(TAG, "Extracted equation: '" + equation + "'");
+
+        return equation;
+    }
+
+    /**
+     * Finds and extracts the mathematical equation from text.
+     * Filters out UI elements and non-mathematical text.
+     *
+     * @param text The full text detected by ML Kit
+     * @return The extracted equation, or cleaned full text if no equation found
+     */
+    private String findEquation(String text) {
+        // Split into lines to process individually
+        String[] lines = text.split("\\n");
+
+        String bestMatch = "";
+        int highestScore = 0;
+
+        for (String line : lines) {
+            String cleaned = line.trim();
+            int score = scoreEquationLikelihood(cleaned);
+
+            Log.d(TAG, "Line: '" + cleaned + "' score: " + score);
+
+            if (score > highestScore) {
+                highestScore = score;
+                bestMatch = cleaned;
+            }
+        }
+
+        // If we found a good equation candidate, return it
+        if (highestScore > 0) {
+            return bestMatch;
+        }
+
+        // Otherwise, clean up the full text
+        return text.trim().replaceAll("\\s+", " ").replaceAll("\\n+", " ");
+    }
+
+    /**
+     * Scores how likely a line of text is to be a mathematical equation.
+     *
+     * @param line The line of text to score
+     * @return Score (higher = more likely to be an equation)
+     */
+    private int scoreEquationLikelihood(String line) {
+        int score = 0;
+
+        // Filter out common UI patterns
+        if (line.matches(".*(?i)(notes|days|table|PM|AM|previous|new note).*")) {
+            return 0; // Definitely not an equation
+        }
+
+        // Must contain at least one variable or number
+        if (!line.matches(".*[a-zA-Z0-9].*")) {
+            return 0;
+        }
+
+        // High score for mathematical operators
+        if (line.contains("=")) score += 10;
+        if (line.contains("+")) score += 5;
+        if (line.contains("-")) score += 5;
+        if (line.contains("*") || line.contains("×")) score += 5;
+        if (line.contains("/") || line.contains("÷")) score += 5;
+        if (line.matches(".*[0-9].*")) score += 3; // Contains numbers
+
+        // Contains common math variables
+        if (line.matches(".*[xyzXYZ].*")) score += 3;
+
+        // Penalize if it's too long (likely contains UI text)
+        if (line.length() > 50) score -= 5;
+
+        // Penalize if it contains too many words (not equation-like)
+        int wordCount = line.split("\\s+").length;
+        if (wordCount > 5) score -= wordCount;
+
+        return Math.max(0, score);
     }
 
     /**
