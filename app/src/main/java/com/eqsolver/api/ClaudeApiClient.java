@@ -96,7 +96,7 @@ public class ClaudeApiClient {
      */
     private String buildRequestBody(String equation) {
         JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("model", "claude-3-5-sonnet-20241022");
+        requestBody.addProperty("model", "claude-3-5-sonnet-20240620");
         requestBody.addProperty("max_tokens", 2048);
 
         JsonArray messages = new JsonArray();
