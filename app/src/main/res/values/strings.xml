@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EqSolver</string>
+
+    <!-- Main Activity -->
+    <string name="welcome_title">Welcome to EqSolver</string>
+    <string name="welcome_subtitle">Solve math equations with AI</string>
+    <string name="btn_get_started">Get Started</string>
+    <string name="welcome_description">Take a picture of any math equation and get step-by-step solutions instantly</string>
+
+    <!-- Camera Activity -->
+    <string name="camera_title">Capture Equation</string>
+    <string name="btn_capture">Capture</string>
+    <string name="camera_permission_required">Camera permission is required to capture equations</string>
+    <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
+    <string name="camera_instruction">Position the equation in the frame and tap capture</string>
+
+    <!-- Processing -->
+    <string name="processing_image">Processing image...</string>
+    <string name="recognizing_text">Recognizing equation...</string>
+    <string name="solving_equation">Solving equation...</string>
+    <string name="please_wait">Please wait</string>
+
+    <!-- Result Activity -->
+    <string name="result_title">Solution</string>
+    <string name="extracted_equation_label">Equation:</string>
+    <string name="solution_label">Step-by-Step Solution:</string>
+    <string name="btn_solve_another">Solve Another</string>
+    <string name="btn_share">Share Solution</string>
+
+    <!-- Errors -->
+    <string name="error_no_text_found">No text found in the image. Please try again.</string>
+    <string name="error_api_failed">Failed to get solution. Please check your internet connection.</string>
+    <string name="error_camera_failed">Failed to initialize camera</string>
+    <string name="error_capture_failed">Failed to capture image</string>
+    <string name="error_generic">An error occurred. Please try again.</string>
+    <string name="error_no_api_key">API key not configured. Please add your Claude API key to local.properties</string>
+
+    <!-- Share -->
+    <string name="share_solution_title">Share Solution</string>
+</resources>
