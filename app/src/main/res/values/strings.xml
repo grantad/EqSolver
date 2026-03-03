@@ -13,7 +13,7 @@
     <string name="btn_capture">Capture</string>
     <string name="camera_permission_required">Camera permission is required to capture equations</string>
     <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
-    <string name="camera_instruction">Position the equation in the frame and tap capture</string>
+    <string name="camera_instruction">Position the equation inside the box and tap capture</string>
 
     <!-- Processing -->
     <string name="processing_image">Processing image...</string>

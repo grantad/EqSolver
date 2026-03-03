@@ -47,6 +47,7 @@ public class CameraActivity extends AppCompatActivity {
     private FloatingActionButton btnCapture;
     private FrameLayout loadingOverlay;
     private TextView loadingText;
+    private CropBoxOverlay cropBoxOverlay;
 
     private ImageCapture imageCapture;
     private TextRecognizer textRecognizer;
@@ -72,6 +73,7 @@ public class CameraActivity extends AppCompatActivity {
         btnCapture = findViewById(R.id.btnCapture);
         loadingOverlay = findViewById(R.id.loadingOverlay);
         loadingText = findViewById(R.id.loadingText);
+        cropBoxOverlay = findViewById(R.id.cropBoxOverlay);
 
         btnCapture.setOnClickListener(v -> captureImage());
     }
@@ -183,12 +185,18 @@ public class CameraActivity extends AppCompatActivity {
             return;
         }
 
-        // Save bitmap to file
-        currentImagePath = saveBitmapToFile(bitmap);
+        // Crop bitmap to the crop box region
+        Bitmap croppedBitmap = cropBitmapToBox(bitmap);
+        if (croppedBitmap == null) {
+            croppedBitmap = bitmap; // Fallback to full image if crop fails
+        }
 
-        // Extract text from image
+        // Save cropped bitmap to file
+        currentImagePath = saveBitmapToFile(croppedBitmap);
+
+        // Extract text from cropped image
         showLoading(getString(R.string.recognizing_text));
-        textRecognizer.recognizeText(bitmap)
+        textRecognizer.recognizeText(croppedBitmap)
                 .addOnSuccessListener(this::onTextRecognized)
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Text recognition failed", e);
@@ -250,6 +258,41 @@ public class CameraActivity extends AppCompatActivity {
         byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+    }
+
+    /**
+     * Crops the bitmap to the crop box region.
+     */
+    private Bitmap cropBitmapToBox(Bitmap bitmap) {
+        if (bitmap == null || cropBoxOverlay == null) {
+            return bitmap;
+        }
+
+        try {
+            float[] cropRegion = cropBoxOverlay.getCropRegionPercent();
+
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+
+            int cropX = (int) (width * cropRegion[0]);
+            int cropY = (int) (height * cropRegion[1]);
+            int cropWidth = (int) (width * cropRegion[2]);
+            int cropHeight = (int) (height * cropRegion[3]);
+
+            // Ensure crop dimensions are valid
+            cropX = Math.max(0, Math.min(cropX, width - 1));
+            cropY = Math.max(0, Math.min(cropY, height - 1));
+            cropWidth = Math.min(cropWidth, width - cropX);
+            cropHeight = Math.min(cropHeight, height - cropY);
+
+            if (cropWidth > 0 && cropHeight > 0) {
+                return Bitmap.createBitmap(bitmap, cropX, cropY, cropWidth, cropHeight);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error cropping bitmap", e);
+        }
+
+        return bitmap; // Return original if cropping fails
     }
 
     /**
